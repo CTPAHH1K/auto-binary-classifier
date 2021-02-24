@@ -1,5 +1,7 @@
 import pandas as pd
+import numpy as np
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from lightgbm import LGBMClassifier
 
 
 class Preprocessor:
@@ -11,8 +13,9 @@ class Preprocessor:
         self._scaler = StandardScaler()
         self._one_hot_encoder = OneHotEncoder()
         self.train_data_cols = None
+        self.drop_columns = set()
 
-    def fit_transform(self, data: pd.DataFrame, cat_features: [str] = None):
+    def fit_transform(self, data: pd.DataFrame, target, cat_features: [str] = None):
         self.train_data_cols = data.columns
         if cat_features:
             self._cat_features = cat_features
@@ -30,6 +33,9 @@ class Preprocessor:
         cat_data = self._feature_engineering_cat_fit_transform(cat_data)
 
         data = self._merge_num_cat_data(data, num_data, cat_data)
+        # feature selection
+        data = self._feature_selection_fit_transform(data, target)
+
         return data
 
     def transform(self, data: pd.DataFrame):
@@ -47,6 +53,8 @@ class Preprocessor:
         cat_data = self._feature_engineering_cat_transform(cat_data)
 
         data = self._merge_num_cat_data(data, num_data, cat_data)
+        # feature selection
+        data = self._feature_selection_transform(data)
         return data
 
     def _fill_na(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -113,3 +121,33 @@ class Preprocessor:
 
     def _feature_engineering_cat_transform(self, cat_data):
         return pd.DataFrame(self._one_hot_encoder.transform(cat_data))
+
+    def _feature_selection_fit_transform(self, data, target):
+        # identify overcorrelated features
+        corr_matrix = data.corr()
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+        to_drop = [column for column in upper.columns if any(upper[column].abs() > 0.95)]
+
+        self.drop_columns.update(to_drop)
+
+        # train lgbm to identify low inportant features
+        model = LGBMClassifier(n_estimators=1000, learning_rate=0.05, verbose=-1)
+        model.fit(data, target)
+        feature_importance_values = model.feature_importances_
+        feature_importances = pd.DataFrame({'feature': data.columns, 'importance': feature_importance_values})
+        feature_importances['normalized_importance'] = feature_importances['importance'] / feature_importances['importance'].sum()
+        feature_importances['cumulative_importance'] = np.cumsum(feature_importances['normalized_importance'])
+        zero_importance = list(feature_importances[feature_importances['importance'] == 0.0].feature.values)
+
+        self.drop_columns.update(zero_importance)
+
+        feature_importances = feature_importances.sort_values('cumulative_importance')
+        low_importance = list(feature_importances[feature_importances['cumulative_importance'] > 0.995].feature.values)
+
+        self.drop_columns.update(low_importance)
+
+        return data.drop(columns=list(self.drop_columns))
+
+    def _feature_selection_transform(self, data):
+        return data.drop(columns=list(self.drop_columns))
+

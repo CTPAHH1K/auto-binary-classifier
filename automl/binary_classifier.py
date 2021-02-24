@@ -54,7 +54,7 @@ class BinaryClassifier:
         X_train, y_train, X_test, y_test = self._check_convert_inputs(X, y, X_test, y_test)
         # data preprocessing
         if self._preprocess_data:
-            X_train = self._preprocess_train(X_train)
+            X_train = self._preprocess_train(X_train, y_train)
             X_test = self._preprocess_test(X_test)
 
         # Set worst score
@@ -100,8 +100,8 @@ class BinaryClassifier:
     def _score_model(self, model, X_test, y_test):
         return score_func[self._metric](y_test, model.predict(X_test))
 
-    def _preprocess_train(self, X_train):
-        X_train = self._preprocessor.fit_transform(X_train, self.cat_features)
+    def _preprocess_train(self, X_train, y_train):
+        X_train = self._preprocessor.fit_transform(X_train, y_train, self.cat_features)
         return X_train
 
     def _preprocess_test(self, X_test):

@@ -1,4 +1,5 @@
 from catboost import CatBoostClassifier
+from lightgbm import LGBMClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.gaussian_process import GaussianProcessClassifier
@@ -9,11 +10,12 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.neural_network import MLPClassifier
 
-models_list = ['CatBoostClassifier', "Nearest Neighbors", "Linear SVM", "RBF SVM", "Gaussian Process",
+models_list = ['CatBoostClassifier', 'LGBMClassifier', "Nearest Neighbors", "Linear SVM", "RBF SVM", "Gaussian Process",
                "Decision Tree", "Random Forest", "Neural Net", "AdaBoost",
                "Naive Bayes", "QDA"]
 
 MODELS_STR_TO_OBJECT = {'CatBoostClassifier': CatBoostClassifier(verbose=False),
+                        'LGBMClassifier': LGBMClassifier(verbose=-1),
                         'Nearest Neighbors': KNeighborsClassifier(3),
                         'Linear SVM': SVC(kernel="linear", C=0.025),
                         'RBF SVM': SVC(gamma=2, C=1),
