@@ -14,7 +14,7 @@ class BinaryClassifier:
             ensemble: bool = False,
             random_state: int = 42,
             n_jobs: int = -1,
-            metric: str = 'ROCAUC',
+            metric: str = 'roc_auc',
             preprocess_data: bool = True,
             test_size: float = 0.2,
             fill_method='mean',
@@ -79,10 +79,12 @@ class BinaryClassifier:
             # Score model
             if higher_better[self._metric]:
                 if self.models_score[model] > best_score:
+                    best_score = self.models_score[model]
                     self.best_model_name = model
                     self.best_model = self.models[model]
             else:
                 if self.models_score[model] < best_score:
+                    best_score = self.models_score[model]
                     self.best_model_name = model
                     self.best_model = self.models[model]
 

@@ -23,10 +23,11 @@ class Preprocessor:
         num_data = data.drop(columns=self._cat_features).copy()
         num_data = self._fill_na(num_data)
         num_data = pd.DataFrame(self._scaler.fit_transform(num_data))
+        num_data = self._feature_engineering_num_fit_transform(num_data)
         # Categorical cols transform
         cat_data = data[self._cat_features].copy()
         cat_data = self._fill_na_cat(cat_data)
-        cat_data = pd.DataFrame(self._one_hot_encoder.fit_transform(cat_data))
+        cat_data = self._feature_engineering_cat_fit_transform(cat_data)
 
         data = self._merge_num_cat_data(data, num_data, cat_data)
         return data
@@ -38,11 +39,12 @@ class Preprocessor:
         # Numerical cols transform
         num_data = data.drop(columns=self._cat_features).copy()
         num_data = self._fill_na(num_data)
-        num_data = self._scaler.transform(num_data)
+        num_data = pd.DataFrame(self._scaler.transform(num_data))
+        num_data = self._feature_engineering_num_transform(num_data)
         # Categorical cols transform
         cat_data = data[self._cat_features].copy()
         cat_data = self._fill_na_cat(cat_data)
-        cat_data = self._one_hot_encoder.transform(cat_data)
+        cat_data = self._feature_engineering_cat_transform(cat_data)
 
         data = self._merge_num_cat_data(data, num_data, cat_data)
         return data
@@ -90,3 +92,24 @@ class Preprocessor:
         else:
             data = num_data
         return data
+
+    def _feature_engineering_num_fit_transform(self, num_data):
+        return self._feature_engineering_num(num_data)
+
+    def _feature_engineering_num_transform(self, num_data):
+        return self._feature_engineering_num(num_data)
+
+    def _feature_engineering_num(self, num_data):
+        extra_features = pd.DataFrame()
+        for col1 in num_data.columns:
+            for col2 in num_data.columns:
+                extra_features[f'{col1}*{col2}'] = num_data[col1] * num_data[col2]
+                if col1 != col2:
+                    extra_features[f'{col1}/{col2}'] = num_data[col1] / num_data[col2]
+        return pd.merge(num_data, extra_features, left_index=True, right_index=True)
+
+    def _feature_engineering_cat_fit_transform(self, cat_data):
+        return pd.DataFrame(self._one_hot_encoder.fit_transform(cat_data))
+
+    def _feature_engineering_cat_transform(self, cat_data):
+        return pd.DataFrame(self._one_hot_encoder.transform(cat_data))
