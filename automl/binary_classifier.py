@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-from typing import Optional
 from .utils.models import models_list, MODELS_STR_TO_OBJECT
-from .utils.metrics import score_func, higher_better
+from .utils.metrics import score_func, higher_better, metrics_list
 from .utils.preprocessor import Preprocessor
 
 from sklearn.model_selection import train_test_split, KFold
+from joblib import Parallel, delayed
 
 
 class BinaryClassifier:
@@ -13,22 +13,23 @@ class BinaryClassifier:
             self,
             ensemble: bool = False,
             random_state: int = 42,
-            n_jobs: Optional[int] = None,
+            n_jobs: int = -1,
             metric: str = 'ROCAUC',
             preprocess_data: bool = True,
             test_size: float = 0.2,
-            fill_method='mean'
+            fill_method='mean',
+            verbose_training: bool = True,
     ):
         self._ensemble = ensemble
         self._random_state = random_state
         self._n_jobs = n_jobs
         self._metric = metric
         self._preprocess_data = preprocess_data
-        self._verbose_train = False
+        self._verbose_train = verbose_training
         self._fill_method = fill_method
+        self._n_jobs = n_jobs
         if test_size:
             assert 1 > test_size > 0
-
             self._test_size = test_size
 
         self.cat_features = None
@@ -51,7 +52,7 @@ class BinaryClassifier:
         self.cat_features = cat_features
 
         X_train, y_train, X_test, y_test = self._check_convert_inputs(X, y, X_test, y_test)
-
+        # data preprocessing
         if self._preprocess_data:
             X_train = self._preprocess_train(X_train)
             X_test = self._preprocess_test(X_test)
@@ -62,11 +63,19 @@ class BinaryClassifier:
         else:
             best_score = np.inf
 
+        # pool for parallel model training
+        if self._verbose_train:
+            verb = 100
+        else:
+            verb = 0
+        pool = Parallel(n_jobs=self._n_jobs, verbose=verb, pre_dispatch='all', backend='multiprocessing')
+
         # Train models
-        for model in self.models_list:
-            # Train model
-            self.models[model] = self._train_model(X_train, y_train, X_test, y_test, model)
-            self.models_score[model] = self._score_model(self.models[model], X_test, y_test)
+        models = pool(delayed(self._train_model)(X_train, y_train, X_test, y_test, model) for model in self.models_list)
+        models_scores = pool(delayed(self._score_model)(model, X_test, y_test) for model in models)
+        for i, model in enumerate(self.models_list):
+            self.models[model] = models[i]
+            self.models_score[model] = models_scores[i]
             # Score model
             if higher_better[self._metric]:
                 if self.models_score[model] > best_score:
@@ -81,8 +90,7 @@ class BinaryClassifier:
               f'{self._metric}: {self.models_score[self.best_model_name]}')
 
     def _train_model(self, X, y, X_test, y_test, model):
-        if self._verbose_train:
-            print(f'training {model}')
+        # TODO make hyperparameters tuning with hyperopt, etc
         model = MODELS_STR_TO_OBJECT[model]
         model.fit(X, y)
         return model
