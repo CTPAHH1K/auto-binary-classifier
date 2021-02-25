@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
-from .utils.models import models_list, MODELS_STR_TO_OBJECT
-from .utils.metrics import score_func, higher_better
-from .utils.preprocessor import Preprocessor
+from automl_pn.utils.models import models_list, MODELS_STR_TO_OBJECT
+from automl_pn.utils.metrics import score_func, higher_better
+from automl_pn.utils.preprocessor import Preprocessor
 
 from sklearn.model_selection import train_test_split
 from joblib import Parallel, delayed

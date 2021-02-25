@@ -2,8 +2,13 @@
 
 This lib is intended to automate supervised binary classification
 
-Usage is as simple as
+install with
 
+```shell
+pip install automl-pn==0.1.3
+```
+
+Usage is as simple as
 ```python
 from automl_pn.binary_classifier import BinaryClassifier
 

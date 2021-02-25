@@ -270,7 +270,7 @@ class Preprocessor:
         feature_importances['normalized_importance'] = feature_importances['importance'] / feature_importances['importance'].sum()
         feature_importances['cumulative_importance'] = np.cumsum(feature_importances['normalized_importance'])
         zero_importance = list(feature_importances[feature_importances['importance'] == 0.0].feature.values)
-        
+
         self.drop_columns.update(zero_importance)
 
         feature_importances = feature_importances.sort_values('cumulative_importance')
